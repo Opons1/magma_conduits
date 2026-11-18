@@ -5,8 +5,13 @@ local modname = minetest.get_current_modname()
 magma_conduits.S = minetest.get_translator(modname)
 
 local modpath = minetest.get_modpath(modname)
+core.register_mapgen_script(modpath .. "/initmg.lua")
+
 dofile(modpath.."/config.lua")
+core.register_mapgen_script(modpath .. "/config.lua")
+
 dofile(modpath.."/voxelarea_iterator.lua")
+core.register_mapgen_script(modpath .. "/voxelarea_iterator.lua")
 dofile(modpath.."/hot_rock.lua")
 
 if magma_conduits.config.remove_default_lava then

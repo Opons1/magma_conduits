@@ -39,7 +39,7 @@ magma_conduits.make_hot_node_def = function(name, original_def, description)
 	return hot_name, hot_node_def
 end
 
-minetest.register_node("magma_conduits:hot_cobble", {
+core.register_node("magma_conduits:hot_cobble", {
 	description = S("Hot Cobble"),
 	_doc_items_longdesc = S("Hot stone riven with cracks and seeping traces of lava."),
 	_doc_items_usagehelp = S("When normal stone is heated by lava it is converted into this. Beware when digging here!"),
@@ -52,7 +52,7 @@ minetest.register_node("magma_conduits:hot_cobble", {
 	drop = "default:cobble",
 })
 
-minetest.register_node("magma_conduits:glow_obsidian", {
+core.register_node("magma_conduits:glow_obsidian", {
 	description = S("Hot Obsidian"),
 	_doc_items_longdesc = S("Obsidian heated to a dull red glow."),
 	_doc_items_usagehelp = S("When normal obsidian is heated by lava it is converted into this. Beware when digging here!"),
@@ -65,16 +65,24 @@ minetest.register_node("magma_conduits:glow_obsidian", {
 	drop = "default:obsidian",
 })
 
--- can't use minetest.override_item to change group memberships here due to issue https://github.com/minetest/minetest/issues/5518
-
+-- can't use core.override_item to change group memberships here due to issue https://github.com/minetest/minetest/issues/5518
+-- seems to be fixed? the issue is resolved, the overide works, but no commit mentioned
 local make_heatable = function(nodename, heats_to)
-	local original_def = minetest.registered_nodes[nodename]
+	local groups = table.copy(core.registered_nodes[nodename].groups)
+	groups.lava_heatable = 1
+	core.override_item(nodename, {
+		groups = groups,
+		_magma_conduits_heats_to = heats_to,
+	})
+	--[[
+	local original_def = core.registered_nodes[nodename]
 	if original_def ~= nil then
 		local def = simple_copy(original_def)
 		def.groups.lava_heatable = 1
 		def._magma_conduits_heats_to = heats_to
-		minetest.register_node(":"..nodename, def)
+		core.register_node(":"..nodename, def)
 	end
+	]]
 end
 
 make_heatable("default:obsidian", "magma_conduits:glow_obsidian")
@@ -89,41 +97,43 @@ make_heatable("default:permafrost", "default:dirt")
 make_heatable("default:permafrost_with_stones", "default:dirt")
 make_heatable("default:permafrost_with_moss", "default:dirt")
 
-minetest.register_abm{
+core.register_abm{
     label = "magma_conduits lava heating neighbors",
 	nodenames = {"group:lava_heatable"},
 	neighbors = {"default:lava_source", "default:lava_flowing"},
 	interval = 10,
 	chance = 5,
 	action = function(pos)
-		local name = minetest.get_node(pos).name
-		local def = minetest.registered_nodes[name]
+		local name = core.get_node(pos).name
+		local def = core.registered_nodes[name]
 		
 		if def.groups.lava_heatable then
 			local target = def._magma_conduits_heats_to
 			if target then
-				minetest.set_node(pos, {name = target})
+				core.set_node(pos, {name = target})
 			else
-				minetest.log("error", name .. " is in group lava_heatable but doesn't have a _magma_conduits_heats_to property defined in its definition")
+				core.log("error", name .. " is in group lava_heatable but doesn't have a _magma_conduits_heats_to property defined in its definition")
 			end
 		end
 	end,
 }
 
-minetest.register_abm{
+core.register_abm{
     label = "magma_conduits cooling stuff heated by lava",
 	nodenames = {"group:lava_heated"},
 	interval = 100,
 	chance = 10,
+	--filter this out before even doing the function
+	without_neighbors = {"default:lava_source", "default:lava_flowing"},
 	action = function(pos)
-		if not minetest.find_node_near(pos, 2, {"default:lava_source", "default:lava_flowing"}, false) then
-			local name = minetest.get_node(pos).name
-			local def = minetest.registered_nodes[name]
+		if not core.find_node_near(pos, 2, {"default:lava_source", "default:lava_flowing"}, false) then
+			local name = core.get_node(pos).name
+			local def = core.registered_nodes[name]
 			local target = def._magma_conduits_cools_to
 			if target then
-				minetest.set_node(pos, {name = target})
+				core.set_node(pos, {name = target})
 			else
-				minetest.log("error", name .. " is in group lava_heated but doesn't have a _magma_conduits_cools_to property defined in its definition")
+				core.log("error", name .. " is in group lava_heated but doesn't have a _magma_conduits_cools_to property defined in its definition")
 			end
 		end
 	end,
@@ -131,7 +141,7 @@ minetest.register_abm{
 
 else
 
-minetest.register_alias("magma_conduits:hot_cobble", "default:cobble")
-minetest.register_alias("magma_conduits:glow_obsidian", "default:obsidian")
+core.register_alias("magma_conduits:hot_cobble", "default:cobble")
+core.register_alias("magma_conduits:glow_obsidian", "default:obsidian")
 
 end
